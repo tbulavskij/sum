@@ -19,7 +19,7 @@ always_comb
 	    xor_reg[block_index] = in1[block_index] ^ in2[block_index];
 	    and_reg[block_index] = in1[block_index] & in2[block_index];
 	    if (block_index == 1) and2_reg[1] = xor_reg[1] & and_reg[0];
-	    else if (block_index > 1) and2_reg[block_index] = xor_reg[block_index] & and2_reg[block_index - 1];
+	    else if (block_index > 1) and2_reg[block_index] = xor_reg[block_index] & or_reg[block_index - 1];
 	    if (block_index > 0) or_reg[block_index] = and_reg[block_index] | and2_reg[block_index];
 	    if (block_index == 0) out[0] = xor_reg[0];
   	    else if (block_index == 1) out[1] = and_reg[0] ^ xor_reg[1];
