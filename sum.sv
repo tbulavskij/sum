@@ -1,31 +1,55 @@
-`define bus_width 8
+ `include "half_sum.sv"
 
-module sum(
-  input   logic [`bus_width - 1:0]  in1,  
-  input   logic [`bus_width - 1:0]  in2,
-  output  logic [`bus_width - 1:0]  out
-);
+ parameter BUS_WIDTH = 32;
 
-logic [`bus_width - 1:0] xor_reg;
-logic [`bus_width - 1:0] and_reg;
-logic [`bus_width - 1:1] and2_reg;
-logic [`bus_width - 1:1] or_reg;
+ module sum(
+  input   logic [BUS_WIDTH - 1:0]  sum_in1,  
+  input   logic [BUS_WIDTH - 1:0]  sum_in2,
+  output  logic [BUS_WIDTH - 1:0]  sum_out,
+  output  logic                    sum_nextbit_out
+            );
 
+ logic [BUS_WIDTH*2 - 1:0] halfsum_in1;
+ logic [BUS_WIDTH*2 - 1:0] halfsum_in2;
+ logic [BUS_WIDTH*2 - 1:0] halfsum_out;
+ logic [BUS_WIDTH*2 - 1:0] halfsum_nextbit_out;
+ 
 
-always_comb 
-  begin
-    for (int block_index = 0; block_index < `bus_width; block_index++)
-	  begin
-	    xor_reg[block_index] = in1[block_index] ^ in2[block_index];
-	    and_reg[block_index] = in1[block_index] & in2[block_index];
-	    if (block_index == 1) and2_reg[1] = xor_reg[1] & and_reg[0];
-	    else if (block_index > 1) and2_reg[block_index] = xor_reg[block_index] & or_reg[block_index - 1];
-	    if (block_index > 0) or_reg[block_index] = and_reg[block_index] | and2_reg[block_index];
-	    if (block_index == 0) out[0] = xor_reg[0];
-  	    else if (block_index == 1) out[1] = and_reg[0] ^ xor_reg[1];
-	    else  out[block_index] = or_reg[block_index - 1] ^ xor_reg[block_index];
-	  end
+ generate       
+  genvar genindex; 
+   for (genindex = 0; genindex < BUS_WIDTH*2 - 1; genindex++) begin 
+    .half_sum u1(
+	.halfsum_in1         (halfsum_in1[genindex]),
+    .halfsum_in2         (halfsum_in2[genindex]),
+	.halfsum_out         (halfsum_out[genindex]),
+	.halfsum_nextbit_out (halfsum_nextbit_out[genindex])
+      );
+   end
+  endgenerate
 
+ always_comb begin
+  for (int block_index = 0; block_index < BUS_WIDTH*2; block_index+=2) begin
+   if (block_index == 0) begin
+    halfsum_in1[block_index] = sum_in1[block_index];
+    halfsum_in2[block_index] = sum_in2[block_index];
+    sum_out[block_index]     = halfsum_out[block_index];
+   end
+   else if (block_index == 2) begin
+    halfsum_in1[block_index-1]  = sum_in1[block_index/2];
+    halfsum_in2[block_index-1]  = sum_in2[block_index/2];
+    halfsum_in1[block_index]    = halfsum_nextbit_out[block_index-2];
+	halfsum_in2[block_index]    = halfsum_out[block_index - 1];
+    sum_out[block_index/2]		= halfsum_out[block_index];	 
+   end
+   else begin
+    halfsum_in1[block_index-1]  = sum_in1[block_index/2];
+    halfsum_in2[block_index-1]  = sum_in2[block_index/2];
+    halfsum_in1[block_index]    = halfsum_nextbit_out[block_index-2] |  halfsum_nextbit_out[block_index-3];
+    halfsum_in2[block_index]    = halfsum_out[block_index - 1];
+    sum_out[block_index/2]		= halfsum_out[block_index];	 
+   end
   end
-
+  sum_nextbit_out = halfsum_nextbit_out[BUS_WIDTH*2 - 2] |  halfsum_nextbit_out[BUS_WIDTH*2 - 3];
+ end
 endmodule
+
