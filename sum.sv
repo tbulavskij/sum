@@ -11,7 +11,8 @@
   input   logic                    sum_in_en, 
   output  logic [BUS_WIDTH - 1:0]  sum_out,
   output  logic                    sum_out_en,
-  output  logic                    carry_bit_out
+  output  logic                    carry_bit_out,
+  output  logic                    ready
   );
 
  logic [BUS_WIDTH - 1:0] sum_out_reg;
@@ -38,9 +39,11 @@ always_ff @(posedge clk or negedge arst) begin
   if (arst == 0) begin
     carry_bit_out <= '0;
     sum_out       <= '0;
-    sum_out_en    <= '0;
+    sum_out_en    <=  0;
+    //ready         <=  0;
   end
   else begin
+    //ready <= 1;
     if (sum_in_en) begin
       sum_out       <= sum_out_reg;
       carry_bit_out <= carry_bit_out_reg;
@@ -48,6 +51,8 @@ always_ff @(posedge clk or negedge arst) begin
     sum_out_en <= sum_in_en;
   end
 end
+
+assign ready = arst;
 
 always_comb begin
   for (int block_index = 0; block_index < BUS_WIDTH*2; block_index+=2) begin
